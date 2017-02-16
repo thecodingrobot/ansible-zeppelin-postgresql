@@ -1,0 +1,81 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    - aws_key_name: "aws_dev_key"
+    - aws_instance_tags:
+        Team: "Ops"
+        Name: "ops-pg-zeppelin"
+    - aws_subnet_id: "subnet-XXXXXXX"
+    - aws_iam_id: "ops-ec2"
+    - aws_security_group: "Office-Web"
+
+  tasks:
+  - name: Provision EC2 instances.
+    ec2:
+      key_name: "{{ aws_key_name }}"
+      instance_tags: "{{ aws_instance_tags }}"
+      group: "{{ aws_security_group }}"
+      instance_type: "{{ aws_instance_type | default('t2.medium') }}" # Free Tier
+      image: "{{ aws_ami_id | default('ami-7abd0209') }}" # CentOS7 x64 hvm
+      region: "{{ aws_region | default('eu-west-1') }}" # Ireland
+      vpc_subnet_id: "{{ aws_subnet_id }}"
+      assign_public_ip: yes
+      instance_profile_name: "{{ aws_iam_id }}"
+      volumes:
+        - device_name: /dev/sda1
+          volume_type: gp2
+          volume_size: 100
+      wait: yes
+      wait_timeout: 500
+      exact_count: "1"
+      count_tag: "{{ aws_instance_tags }}"
+    register: created_instances
+  - name: Add EC2 instances to their respective inventory groups.
+    add_host:
+      name: "{{ item.private_ip }}"
+      groups: "aws,{{ item.tags.Team }},{{ item.tags.Name }}"
+      ansible_ssh_user: centos
+      ansible_become: yes
+      ansible_become_method: sudo
+      pipelining: no
+    with_items:
+      - "{{ created_instances.tagged_instances }}"
+- hosts: props-pg-zeppelin
+  pre_tasks:
+    - name: Remove require tty
+      lineinfile: regexp="^\s+\w+\s+requiretty" dest=/etc/sudoers state=absent
+
+    - name: Add EPEL repo
+      yum_repository:
+        name: epel
+        enabled: yes
+        description: EPEL YUM repo
+        baseurl: http://download.fedoraproject.org/pub/epel/$releasever/$basearch/
+        gpgkey: http://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-$releasever
+        gpgcheck: yes
+
+    - name: update yum
+      yum: name=* state=latest
+
+    - name: install base packages
+      yum: name={{ item }} state=present
+      with_items:
+        - java-1.8.0-openjdk-headless
+        - deltarpm
+        - unzip
+        - awscli
+        - supervisor
+        - python-passlib
+        - python-psycopg2
+        - python-pip
+        - policycoreutils-python
+        - libselinux-python
+  roles:
+    - postgresql
+    - zeppelin
+  tasks:
+    - name: create postgresql user
+      postgresql_user: name=zeppelin password=z3pp3l1n
+      

@@ -1,0 +1,31 @@
+---
+- name: install nginx
+  yum: name=nginx state=present
+
+- name: enable nginx
+  service: name=nginx state=started enabled=yes
+
+- seport: ports=80 proto=tcp setype=http_port_t state=present
+- seport: ports=8080 proto=tcp setype=http_cache_port_t state=present
+
+- name: create zeppelin user
+  user: name=zeppelin
+
+- name: create zeppelin folder
+  file:
+    path: "{{ zeppelin_install_dir }}"
+    state: directory
+    owner: zeppelin
+    mode: 0755
+- name: download zeppelin distribution
+  get_url:
+    url: "{{ zeppelin_url }}"
+    dest: "{{ zeppelin_download_dest }}"
+    checksum: "{{ zeppelin_checksum }}"
+- name: extract zeppelin
+  unarchive:
+    src: "{{ zeppelin_download_dest }}"
+    dest: "{{ zeppelin_install_dir }}"
+    remote_src: True
+    owner: zeppelin
+    creates: "{{ zeppelin_install_dir }}/zeppelin-0.7.0-bin-all/bin/zeppelin.sh"

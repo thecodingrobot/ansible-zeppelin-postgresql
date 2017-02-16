@@ -1,0 +1,5 @@
+---
+zeppelin_url: http://www.mirrorservice.org/sites/ftp.apache.org/zeppelin/zeppelin-0.7.0/zeppelin-0.7.0-bin-all.tgz
+zeppelin_checksum: sha512:8f8533c7b454b7ea6920aa1b80fc3e56147a4dbafbcf42adedbc9dd059d74499abd97b16ac8bc0973e64444d0022cbdd5e0bf90ef03eb603021c09c2149c1e6d
+zeppelin_download_dest: /opt/zeppelin/zeppelin-0.7.0-bin-all.tgz
+zeppelin_install_dir: /opt/zeppelin

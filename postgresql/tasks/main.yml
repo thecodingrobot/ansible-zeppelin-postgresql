@@ -1,0 +1,42 @@
+---
+- name: exclude default centos packages
+  ini_file: dest="/etc/yum.repos.d/CentOS-Base.repo" option="exclude" value="postgresql*" section="{{ item }}"
+  with_items:
+    - "base"
+    - "updates"
+
+- name: add postgresql repo
+  yum: name=https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/pgdg-centos96-9.6-3.noarch.rpm state=present
+
+- name: install postgresql server and client
+  yum: name="{{ item }}" state=present
+  with_items:
+    - postgresql96-server.x86_64
+    - postgresql96.x86_64
+  notify:
+    - restart postgresql
+
+- name: check postgresql data folder exists
+  stat: path=/var/lib/pgsql/9.6/data/PG_VERSION
+  register: pgsql_path
+
+- name: init postgresql
+  command: /usr/pgsql-9.6/bin/postgresql96-setup initdb
+  when: pgsql_path.stat.exists == false
+
+- name: update pg_hba.conf
+  copy:
+    src: files/pg_hba.conf
+    dest: /var/lib/pgsql/9.6/data/pg_hba.conf
+    owner: postgres
+    group: postgres
+  register: pg_hba_changed
+  notify:
+    - restart postgresql
+
+- name: always restart postgresql
+  service: name=postgresql-9.6 state=restarted
+  when: pg_hba_changed.changed
+
+- name: enable and start postgresql service
+  service: name=postgresql-9.6 state=started enabled=yes
