@@ -78,4 +78,4 @@
   tasks:
     - name: create postgresql user
       postgresql_user: name=zeppelin password=z3pp3l1n
-      
+
